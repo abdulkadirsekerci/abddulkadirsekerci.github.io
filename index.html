@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NÖBET LİSTESİ</title>
+    <title>NÖBETÇİ LİSTESİ</title>
     <style>
         body {
             background-color: #000;
             color: #fff;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -16,8 +16,8 @@
             height: 100vh;
             margin: 0;
         }
-        #tarih-baslik {
-            font-size: 3rem;
+        #baslik {
+            font-size: 3.5rem;
             color: #00d4ff;
             margin-bottom: 20px;
             font-weight: bold;
@@ -25,82 +25,78 @@
         table {
             width: 90%;
             border-collapse: collapse;
-            border: 5px solid #ffffff;
+            border: 6px solid #fff;
+            background: #000;
         }
         th, td {
-            padding: 25px;
-            font-size: 3.2rem;
+            padding: 30px;
+            font-size: 3.5rem;
             border: 2px solid #444;
             text-align: left;
         }
-        th {
-            background-color: #222;
-            color: #00d4ff;
-            width: 35%;
-        }
+        th { background-color: #222; color: #00d4ff; width: 35%; }
         td { font-weight: bold; color: #fff; }
-        .hata {
-            font-size: 2.5rem;
-            color: #ff4444;
-            text-align: center;
-            padding: 40px;
-        }
+        .hata { font-size: 2.5rem; color: #ff4444; padding: 50px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="tarih-baslik">YÜKLENİYOR...</div>
+    <div id="baslik">YÜKLENİYOR...</div>
     <table id="tablo"></table>
 
     <script>
+        // Senin CSV linkin
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSfQalRVQ1BeN02-dQkHNTL-RtoImYh1qO_eaM1mtFdP3TSjDc_wOzlxsfQL7as4uYIhvA9kdmustkK/pub?output=csv';
 
-        async function veriyiCek() {
+        async function veriyiGetir() {
             try {
+                // Bugünün tarihini gece yarısına ayarla (Saat farkı olmaması için)
                 const simdi = new Date();
-                const yil = simdi.getFullYear();
-                const ay = String(simdi.getMonth() + 1).padStart(2, '0');
-                const gun = String(simdi.getDate()).padStart(2, '0');
-
-                // İhtimal 1: 2026-04-15 (Senin CSV'ndeki format)
-                const bugunTireli = `${yil}-${ay}-${gun}`;
-                // İhtimal 2: 15.04.2026
-                const bugunNoktali = `${gun}.${ay}.${yil}`;
-
-                document.getElementById('tarih-baslik').innerText = bugunNoktali + " NÖBETÇİLERİ";
+                const bugunZaman = new Date(simdi.getFullYear(), simdi.getMonth(), simdi.getDate()).getTime();
+                
+                // Başlıkta gösterim için
+                document.getElementById('baslik').innerText = simdi.toLocaleDateString('tr-TR') + " NÖBETÇİLERİ";
 
                 const response = await fetch(csvUrl + '&t=' + new Date().getTime());
                 const text = await response.text();
-                
-                // Satırları ayır ve temizle
                 const satirlar = text.split(/\r?\n/);
-                const basliklar = satirlar[0].split(',').map(b => b.trim().replace(/"/g, ''));
+                
+                // Başlıkları al ve temizle
+                const basliklar = satirlar[0].split(',').map(s => s.trim().replace(/"/g, ''));
                 
                 let html = "";
                 let bulundu = false;
 
                 for (let i = 1; i < satirlar.length; i++) {
                     const sutunlar = satirlar[i].split(',').map(s => s.trim().replace(/"/g, ''));
-                    const satirTarihi = sutunlar[0];
+                    const satirTarihHam = sutunlar[0]; // Örn: 2026-04-15
 
-                    // Tarih eşleşmesi (Boşlukları temizleyerek kontrol eder)
-                    if (satirTarihi === bugunTireli || satirTarihi === bugunNoktali) {
-                        // Bahçe, Zemin, 1.Kat, 2.Kat... (2. indisten başla)
-                        for (let j = 2; j < basliklar.length; j++) {
-                            if (basliklar[j]) {
-                                html += `<tr>
-                                    <th>${basliklar[j]}</th>
-                                    <td>${sutunlar[j] || '-'}</td>
-                                </tr>`;
-                            }
+                    if (satirTarihHam) {
+                        // Excel'den gelen tarihi parçalara ayır (Yıl, Ay, Gün)
+                        const tParca = satirTarihHam.split(/[-.]/); // Hem tireyi hem noktayı destekler
+                        let tNesnesi;
+
+                        if (tParca[0].length === 4) { // YYYY-MM-DD formatı ise
+                            tNesnesi = new Date(tParca[0], tParca[1] - 1, tParca[2]).getTime();
+                        } else { // DD.MM.YYYY formatı ise
+                            tNesnesi = new Date(tParca[2], tParca[1] - 1, tParca[0]).getTime();
                         }
-                        bulundu = true;
-                        break;
+
+                        // Bugünün zamanı ile Excel'deki zamanı karşılaştır
+                        if (tNesnesi === bugunZaman) {
+                            for (let j = 2; j < basliklar.length; j++) {
+                                if (basliklar[j]) {
+                                    html += `<tr><th>${basliklar[j]}</th><td>${sutunlar[j] || '-'}</td></tr>`;
+                                }
+                            }
+                            bulundu = true;
+                            break;
+                        }
                     }
                 }
 
                 if (!bulundu) {
-                    document.getElementById('tablo').innerHTML = `<tr><td class="hata">BUGÜN İÇİN VERİ BULUNAMADI<br><small style="color:gray">Aranan: ${bugunTireli}</small></td></tr>`;
+                    document.getElementById('tablo').innerHTML = `<tr><td class="hata">BUGÜN İÇİN VERİ BULUNAMADI<br><span style="font-size:1.5rem; color:gray">Aranan Tarih Formatı: ${simdi.toISOString().split('T')[0]}</span></td></tr>`;
                 } else {
                     document.getElementById('tablo').innerHTML = html;
                 }
@@ -110,8 +106,8 @@
             }
         }
 
-        veriyiCek();
-        setInterval(veriyiCek, 600000); // 10 dakikada bir kontrol
+        veriyiGetir();
+        setInterval(veriyiGetir, 600000);
     </script>
 </body>
 </html>
