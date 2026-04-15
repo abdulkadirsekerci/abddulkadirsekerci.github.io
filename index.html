@@ -2,130 +2,74 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Günün Menüsü - TV Panel</title>
+    <title>GÜNLÜK NÖBET ÇİZELGESİ</title>
     <style>
-        /* TV Ekranı İçin Özel Tasarım */
-        body {
-            background-color: #000000;
-            color: #ffffff;
-            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            text-align: center;
-        }
-
-        #tarih-baslik {
-            font-size: 3.5rem;
-            color: #00d4ff;
-            margin-bottom: 20px;
-            font-weight: 300;
-            text-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
-        }
-
-        #ana-panel {
-            background: linear-gradient(145deg, #0f0f0f, #050505);
-            padding: 70px 50px;
-            border-radius: 60px;
-            border: 5px solid #1a1a1a;
-            box-shadow: 0 0 80px rgba(0,0,0,1);
-            width: 85%;
-            min-height: 350px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #menu-icerik {
-            font-size: 7.5rem;
-            font-weight: 900;
-            margin: 0;
-            text-transform: uppercase;
-            line-height: 1.1;
-            letter-spacing: -1px;
-        }
-
-        #alt-bar {
-            position: fixed;
-            bottom: 30px;
-            font-size: 1.2rem;
-            color: #222;
-            text-transform: uppercase;
-        }
+        body { background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        #tarih { font-size: 3rem; color: #00d4ff; margin-bottom: 20px; }
+        table { width: 90%; border-collapse: collapse; background: #111; border: 4px solid #333; border-radius: 20px; overflow: hidden; }
+        th, td { padding: 25px; font-size: 2.5rem; border: 1px solid #222; text-align: left; }
+        th { background: #222; color: #00d4ff; text-transform: uppercase; }
+        .vurgu { font-weight: bold; color: #fff; }
     </style>
 </head>
 <body>
-
-    <div id="tarih-baslik">YÜKLENİYOR...</div>
-    
-    <div id="ana-panel">
-        <p id="menu-icerik">BAĞLANTI KURULUYOR...</p>
-    </div>
-
-    <div id="alt-bar">Google Sheets Canlı Veri Sistemi</div>
+    <div id="tarih">Yükleniyor...</div>
+    <table id="nobetTablosu">
+        </table>
 
     <script>
-        // Yeni verdiğin CSV linki
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRqxF1VpopXePOy1x9E21q6HkY2NHPCNqmF7smgt5u61q9EXhD2tv_du4cpvvDLqp1pKV4qkVHWZP-i/pub?output=csv';
 
-        async function veriyiGuncelle() {
+        async function nobetiGetir() {
             try {
-                // Bugünün tarihini GG.AA.YYYY formatında oluştur (Örn: 15.04.2026)
                 const simdi = new Date();
-                const gun = String(simdi.getDate()).padStart(2, '0');
-                const ay = String(simdi.getMonth() + 1).padStart(2, '0');
                 const yil = simdi.getFullYear();
-                const bugun = `${gun}.${ay}.${yil}`;
-
-                document.getElementById('tarih-baslik').innerText = bugun;
-
-                // Veriyi çek (Önbelleği aşmak için zaman damgası eklendi)
-                const response = await fetch(csvUrl + '&t=' + new Date().getTime());
-                const csvMetni = await response.text();
+                const ay = String(simdi.getMonth() + 1).padStart(2, '0');
+                const gun = String(simdi.getDate()).padStart(2, '0');
                 
-                // Satırları ayır
-                const satirlar = csvMetni.split(/\r?\n/);
+                // CSV'deki format: 2026-04-15
+                const bugunCSV = `${yil}-${ay}-${gun}`;
+                // Ekranda görünecek format: 15.04.2026
+                document.getElementById('tarih').innerText = `${gun}.${ay}.${yil} NÖBETÇİ LİSTESİ`;
+
+                const response = await fetch(csvUrl + '&t=' + new Date().getTime());
+                const data = await response.text();
+                const satirlar = data.split(/\r?\n/);
+                
+                let tabloHTML = "";
                 let bulundu = false;
 
-                for (let i = 0; i < satirlar.length; i++) {
-                    // Hem virgül hem de noktalı virgül desteği
-                    const sutunlar = satirlar[i].includes(';') ? satirlar[i].split(';') : satirlar[i].split(',');
-                    
-                    // İlk sütundaki tarihi temizle ve bugünün tarihiyle karşılaştır
-                    const satirTarihi = sutunlar[0].replace(/"/g, '').trim();
+                // İlk satır başlıklardır (Tarih, Gün, Bahçe, Zemin...)
+                const basliklar = satirlar[0].split(',');
 
-                    if (satirTarihi === bugun) {
-                        // Eğer tarih eşleşirse 2. sütundaki veriyi al
-                        const yemekVerisi = sutunlar[1].replace(/"/g, '').trim();
-                        document.getElementById('menu-icerik').innerText = yemekVerisi;
-                        document.getElementById('menu-icerik').style.color = "#ffffff";
+                for (let i = 1; i < satirlar.length; i++) {
+                    const sutunlar = satirlar[i].split(',');
+                    if (sutunlar[0].trim() === bugunCSV) {
+                        // Başlıkları ve isimleri eşleştirerek tablo oluştur
+                        for (let j = 2; j < basliklar.length; j++) {
+                            tabloHTML += `<tr>
+                                <th>${basliklar[j]}</th>
+                                <td class="vurgu">${sutunlar[j] || '-'}</td>
+                            </tr>`;
+                        }
                         bulundu = true;
                         break;
                     }
                 }
 
                 if (!bulundu) {
-                    document.getElementById('menu-icerik').innerText = "BUGÜN İÇİN KAYIT YOK";
-                    document.getElementById('menu-icerik').style.color = "#444";
+                    document.getElementById('nobetTablosu').innerHTML = "<tr><td style='text-align:center'>BUGÜN İÇİN NÖBET KAYDI BULUNAMADI</td></tr>";
+                } else {
+                    document.getElementById('nobetTablosu').innerHTML = tabloHTML;
                 }
 
             } catch (hata) {
-                console.error("Hata:", hata);
-                document.getElementById('menu-icerik').innerText = "ERİŞİM HATASI";
-                document.getElementById('menu-icerik').style.color = "#ff4444";
+                document.getElementById('nobetTablosu').innerHTML = "<tr><td>BAĞLANTI HATASI!</td></tr>";
             }
         }
 
-        // İlk açılışta veriyi getir
-        veriyiGuncelle();
-        
-        // Her 10 dakikada bir (600.000 ms) arka planda kontrol et
-        setInterval(veriyiGuncelle, 600000);
+        nobetiGetir();
+        setInterval(nobetiGetir, 3600000); // 1 saatte bir yenile
     </script>
 </body>
 </html>
