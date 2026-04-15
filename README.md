@@ -1,0 +1,1 @@
+# abddulkadirsekerci.github.io
